@@ -1,0 +1,42 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sep_frontend
+    restart: unless-stopped
+    networks:
+      - sep-internal
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sep_backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on: []
+    networks:
+      - sep-internal
+      - sep-shared-network
+
+  nginx:
+    image: nginx:stable-alpine
+    container_name: sep_nginx
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - frontend
+    ports:
+      - "8080:80"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - sep-internal
+
+networks:
+  sep-internal:
+    driver: bridge
+  sep-shared-network:
+    external: true
