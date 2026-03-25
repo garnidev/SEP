@@ -1,0 +1,134 @@
+// ============================================
+// SEP Local — Design System Tokens
+// Fuente: Mockups institucionales
+// ============================================
+
+// ── Green ──
+$green-50: #e6f2eb;
+$green-100: #b0d5bf;
+$green-200: #8ac1a1;
+$green-300: #54a576;
+$green-400: #33935b;
+$green-500: #007832;
+$green-600: #006d2e;
+$green-700: #005524;
+$green-800: #00421c;
+$green-900: #003215;
+
+// ── Lime ──
+$lime-50: #ebf6e6;
+$lime-500: #39a900;
+$lime-600: #349a00;
+
+// ── Cerulean Blue ──
+$cerulean-50: #e6eaed;
+$cerulean-500: #00304d;
+$cerulean-700: #002237;
+
+// ── Celeste ──
+$celeste-50: #e6fafc;
+$celeste-500: #00ccde;
+$celeste-700: #00919e;
+
+// ── Púrpura ──
+$purpura-50: #f5edff;
+$purpura-100: #dfc6ff;
+$purpura-200: #cfaaff;
+$purpura-300: #b984ff;
+$purpura-400: #ac6cff;
+$purpura-500: #9747ff;
+$purpura-600: #8941e8;
+$purpura-700: #6b32b5;
+$purpura-800: #53278c;
+$purpura-900: #3f1e6b;
+
+// ── Electric Violet ──
+$ev-500: #81217d;
+
+// ── Red ──
+$red-50: #ffe9e9;
+$red-200: #ff9898;
+$red-300: #ff6969;
+$red-500: #ff1f1f;
+$red-600: #e81c1c;
+$red-700: #b51616;
+
+// ── Yellow-Orange ──
+$yellowrange-50: #fff9e6;
+$yellowrange-500: #fdc300;
+$yellowrange-700: #b48a00;
+
+// ── Neutral ──
+$neutral-50: #f1f1f1;
+$neutral-100: #d4d4d4;
+$neutral-200: #bfbfbf;
+$neutral-300: #a1a1a1;
+$neutral-400: #8f8f8f;
+$neutral-500: #737373;
+$neutral-600: #696969;
+$neutral-700: #525252;
+$neutral-800: #3f3f3f;
+$neutral-900: #303030;
+
+// ── Semantic ──
+$color-primary: $green-500;
+$color-primary-hover: $green-600;
+$color-primary-active: $green-700;
+$color-secondary: $purpura-500;
+$color-secondary-hover: $purpura-600;
+$color-accent: $lime-500;
+$color-danger: $red-500;
+$color-danger-hover: $red-600;
+$color-warning: $yellowrange-500;
+$color-info: $celeste-500;
+$color-success: $green-500;
+
+// ── Surfaces ──
+$bg-primary: #ffffff;
+$bg-secondary: $neutral-50;
+$bg-sidebar: $purpura-500;
+
+// ── Text ──
+$text-primary: $neutral-900;
+$text-secondary: $neutral-600;
+$text-tertiary: $neutral-400;
+$text-inverse: #ffffff;
+
+// ── Borders ──
+$border-default: $neutral-200;
+$border-hover: $neutral-300;
+$border-focus: $green-500;
+$border-error: $red-500;
+
+// ── Spacing ──
+$space-1: 4px;
+$space-2: 8px;
+$space-3: 12px;
+$space-4: 16px;
+$space-5: 20px;
+$space-6: 24px;
+$space-7: 32px;
+$space-8: 40px;
+
+// ── Radius ──
+$radius-sm: 4px;
+$radius-md: 8px;
+$radius-lg: 12px;
+$radius-xl: 16px;
+$radius-full: 9999px;
+
+// ── Shadows ──
+$shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+$shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+
+// ── Transitions ──
+$transition-fast: 150ms ease;
+$transition-base: 250ms ease;
+
+// ── Z-Index ──
+$z-dropdown: 100;
+$z-sidebar: 200;
+$z-modal-backdrop: 300;
+$z-modal: 400;
+$z-tooltip: 500;
