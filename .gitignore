@@ -1,21 +1,40 @@
+# ── Dependencias ──
 node_modules/
 .pnpm-store/
+
+# ── Build outputs ──
 dist/
 build/
+.next/
+out/
 .output/
+*.tsbuildinfo
+
+# ── Variables de entorno ──
 .env
 .env.local
 .env.*.local
-.vscode/
-.idea/
-*.swp
-*.swo
-.DS_Store
-Thumbs.db
-docker/nginx/logs/
+!.env.example
+
+# ── Logs ──
 logs/
 *.log
 npm-debug.log*
 pnpm-debug.log*
+
+# ── Coverage / tests ──
 coverage/
 .nyc_output/
+
+# ── Docker ──
+docker/nginx/logs/
+
+# ── Editor ──
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── OS ──
+.DS_Store
+Thumbs.db

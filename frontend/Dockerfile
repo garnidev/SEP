@@ -1,16 +1,48 @@
+# ─────────────────────────────────────────
+# Stage 1: Build
+# ─────────────────────────────────────────
 FROM node:22-alpine AS build
 RUN corepack enable && corepack prepare pnpm@latest --activate
+
 WORKDIR /app
+
+# Instalar dependencias del workspace (solo frontend)
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY frontend/package.json ./frontend/
-COPY backend/package.json ./backend/
+COPY backend/package.json  ./backend/
 RUN pnpm install --frozen-lockfile --filter frontend
+
+# Copiar fuentes y compilar
 COPY frontend/ ./frontend/
+
 WORKDIR /app/frontend
+ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm run build
 
-FROM nginx:stable-alpine
-COPY --from=build /app/frontend/dist /usr/share/nginx/html
-RUN printf 'server {\n  listen 80;\n  root /usr/share/nginx/html;\n  index index.html;\n  location / {\n    try_files $uri $uri/ /index.html;\n  }\n}\n' > /etc/nginx/conf.d/default.conf
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+# ─────────────────────────────────────────
+# Stage 2: Runtime (standalone)
+# ─────────────────────────────────────────
+FROM node:22-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+
+# Crear usuario sin privilegios
+RUN addgroup --system --gid 1001 nodejs \
+ && adduser  --system --uid 1001 nextjs
+
+# Copiar output standalone (contiene server.js + node_modules mínimos)
+COPY --from=build --chown=nextjs:nodejs /app/frontend/.next/standalone ./
+# Copiar assets estáticos generados
+COPY --from=build --chown=nextjs:nodejs /app/frontend/.next/static ./frontend/.next/static
+# Copiar public si existe
+COPY --from=build --chown=nextjs:nodejs /app/frontend/public ./frontend/public
+
+USER nextjs
+EXPOSE 3000
+
+# Next.js standalone genera server.js en la raíz del standalone
+CMD ["node", "frontend/server.js"]

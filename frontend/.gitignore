@@ -1,31 +1,39 @@
-# Logs
-logs
+# ── Next.js ──
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# ── Dependencias ──
+node_modules/
+
+# ── Build ──
+dist/
+build/
+
+# ── Variables de entorno ──
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ── Logs ──
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
+# ── Editor ──
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-# Vue-tsc build artifacts
-*.vue.js
-*.vue.d.ts
-src/**/*.js
-src/**/*.d.ts
-!src/env.d.ts
+# ── OS ──
+.DS_Store
+Thumbs.db
