@@ -4,18 +4,43 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import {
-  Home,
-  Wheat,
-  Newspaper,
+  LayoutDashboard,
   ChevronLeft,
   ChevronRight,
+  Users,
+  FileCheck2,
+  Building2,
+  CalendarDays,
+  ClipboardList,
+  ScrollText,
+  Wallet,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const navItems = [
-  { id: 'home',     label: 'Inicio',                    icon: Home,      path: '/' },
-  { id: 'bakeries', label: 'Directorio de panaderías',  icon: Wheat,     path: '/panaderias' },
-  { id: 'blog',     label: 'Gestor del blog',            icon: Newspaper, path: '/blog' },
+const navGroups = [
+  {
+    label: 'Principal',
+    items: [
+      { id: 'inicio', label: 'Inicio',    icon: LayoutDashboard, path: '/panel' },
+    ],
+  },
+  {
+    label: 'Gestión',
+    items: [
+      { id: 'beneficiarios', label: 'Beneficiarios',  icon: Users,         path: '/beneficiarios' },
+      { id: 'empresas',      label: 'Empresas',        icon: Building2,     path: '/empresas' },
+      { id: 'convenios',     label: 'Convenios',       icon: ScrollText,    path: '/convenios' },
+      { id: 'cronograma',    label: 'Cronograma',      icon: CalendarDays,  path: '/cronograma' },
+    ],
+  },
+  {
+    label: 'Módulos',
+    items: [
+      { id: 'certificacion', label: 'Certificación',  icon: FileCheck2,    path: '/certificacion' },
+      { id: 'desembolsos',   label: 'Desembolsos',    icon: Wallet,        path: '/desembolsos' },
+      { id: 'evaluaciones',  label: 'Evaluaciones',   icon: ClipboardList, path: '/evaluaciones' },
+    ],
+  },
 ]
 
 export function AppSidebar() {
@@ -30,58 +55,57 @@ export function AppSidebar() {
       )}
     >
       {/* Logo */}
-      <div className="mb-10">
+      <div className="mb-8">
         {collapsed ? (
           <div className="flex justify-center">
-            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-xs">
+            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-[10px]">
               S
             </div>
           </div>
         ) : (
           <div className="flex items-center justify-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-xs">
+            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-[10px] text-center leading-tight px-1">
               SENA
             </div>
             <div className="w-px h-8 bg-white/30" />
-            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-xs">
-              SEP
+            <div className="flex flex-col">
+              <span className="text-white font-bold text-xs leading-tight">SEP</span>
+              <span className="text-white/60 text-[10px] leading-tight">GGPC</span>
             </div>
           </div>
         )}
       </div>
 
-      {/* Nav */}
-      <nav className="flex flex-col gap-1 flex-1">
-        {!collapsed && (
-          <>
-            <span className="px-3 py-2 text-xs text-white/50 uppercase tracking-wider">
-              Contenido
-            </span>
-            <div className="h-px bg-white/15 mb-2" />
-          </>
-        )}
-
-        {navItems.map((item) => {
-          const isActive = pathname === item.path
-          return (
-            <Link
-              key={item.id}
-              href={item.path}
-              title={collapsed ? item.label : undefined}
-              className={cn(
-                'flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-150 no-underline',
-                isActive
-                  ? 'bg-white/[0.18] text-white'
-                  : 'text-white/75 hover:bg-white/10 hover:text-white'
-              )}
-            >
-              <item.icon size={20} className="flex-shrink-0" />
-              {!collapsed && (
-                <span className="truncate">{item.label}</span>
-              )}
-            </Link>
-          )
-        })}
+      {/* Nav groups */}
+      <nav className="flex flex-col gap-4 flex-1">
+        {navGroups.map((group) => (
+          <div key={group.label} className="flex flex-col gap-1">
+            {!collapsed && (
+              <span className="px-3 text-[10px] font-semibold text-white/40 uppercase tracking-widest mb-1">
+                {group.label}
+              </span>
+            )}
+            {group.items.map((item) => {
+              const isActive = pathname === item.path
+              return (
+                <Link
+                  key={item.id}
+                  href={item.path}
+                  title={collapsed ? item.label : undefined}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 no-underline',
+                    isActive
+                      ? 'bg-white/[0.18] text-white'
+                      : 'text-white/70 hover:bg-white/10 hover:text-white'
+                  )}
+                >
+                  <item.icon size={18} className="flex-shrink-0" />
+                  {!collapsed && <span className="truncate">{item.label}</span>}
+                </Link>
+              )
+            })}
+          </div>
+        ))}
       </nav>
 
       {/* Collapse toggle */}
@@ -96,7 +120,7 @@ export function AppSidebar() {
       {/* User area */}
       <div
         className={cn(
-          'flex items-center gap-3 p-3 rounded-lg bg-green-500 mt-auto cursor-pointer hover:bg-green-600 transition-colors',
+          'flex items-center gap-3 p-3 rounded-lg bg-green-500 mt-6 cursor-pointer hover:bg-green-600 transition-colors',
           collapsed && 'justify-center'
         )}
       >

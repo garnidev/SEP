@@ -1,0 +1,236 @@
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common'
+import { InjectRepository } from '@nestjs/typeorm'
+import { JwtService } from '@nestjs/jwt'
+import { DataSource, Repository } from 'typeorm'
+import * as crypto from 'crypto'
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { twofish } = require('twofish')
+import { Usuario } from './entities/usuario.entity'
+import { Empresa } from './entities/empresa.entity'
+import { LoginDto } from './dto/login.dto'
+import { RegistrarEmpresaDto } from './dto/registrar-empresa.dto'
+
+/**
+ * Replica exacta de GeneXus GetEncryptionKey():
+ * Genera 16 bytes aleatorios y los convierte a hex mayúsculas (32 chars).
+ */
+function getEncryptionKey(): string {
+  return crypto.randomBytes(16).toString('hex').toUpperCase()
+}
+
+/**
+ * Replica exacta de GeneXus Encrypt64(plainText, key):
+ *   - Twofish-128 ECB
+ *   - Key: hex-decoded 16 bytes (la llave es un string hex de 32 chars)
+ *   - Padding: espacios (0x20) hasta 16 bytes
+ *   - Output: Base64 standard
+ */
+function encrypt64(plainText: string, key: string): string {
+  const tf = twofish(new Array(16).fill(0))
+  const keyArr = Array.from(Buffer.from(key, 'hex')) as number[]
+  const padded = Array.from(Buffer.from(plainText, 'utf8')) as number[]
+  while (padded.length < 16) padded.push(0x20)
+  return Buffer.from(tf.encrypt(keyArr, padded)).toString('base64')
+}
+
+/**
+ * Replica exacta de GeneXus Decrypt64(encryptedBase64, key):
+ *   - Twofish-128 ECB
+ *   - Key: hex-decoded 16 bytes
+ *   - Quita espacios finales (padding de GeneXus)
+ */
+function decrypt64(encryptedBase64: string, key: string): string {
+  const tf = twofish(new Array(16).fill(0))
+  const keyArr = Array.from(Buffer.from(key, 'hex')) as number[]
+  const encArr = Array.from(Buffer.from(encryptedBase64, 'base64')) as number[]
+  const decArr = tf.decrypt(keyArr, encArr) as number[]
+  return Buffer.from(decArr).toString('utf8').trimEnd()
+}
+
+// Perfiles GeneXus → roles legibles
+const PERFIL_ROLES: Record<number, string> = {
+  1: 'administrador',
+  2: 'gestor',
+  3: 'gestor',
+  4: 'financiera',
+  5: 'juridica',
+  6: 'tecnica',
+  7: 'empresa',
+  8: 'usuario',
+  9: 'evaluador',
+  10: 'interventor',
+  11: 'interventor',
+  12: 'gestor',
+  13: 'gestor',
+  14: 'gestor',
+}
+
+@Injectable()
+export class AuthService {
+  constructor(
+    @InjectRepository(Usuario)
+    private readonly usuarioRepo: Repository<Usuario>,
+    @InjectRepository(Empresa)
+    private readonly empresaRepo: Repository<Empresa>,
+    private readonly jwtService: JwtService,
+    private readonly dataSource: DataSource,
+  ) {}
+
+  async login(dto: LoginDto) {
+    if (!dto.email || !dto.clave) {
+      throw new BadRequestException('Correo y contraseña son requeridos')
+    }
+
+    const usuario = await this.usuarioRepo.findOne({
+      where: { usuarioEmail: dto.email },
+    })
+
+    if (!usuario) {
+      throw new UnauthorizedException('Usuario incorrecto')
+    }
+
+    // Desencriptar clave almacenada con la llave del usuario (mismo algoritmo GeneXus)
+    let claveDesencriptada: string
+    try {
+      claveDesencriptada = decrypt64(
+        usuario.usuarioClave,
+        usuario.usuarioLlaveEncriptacion,
+      )
+    } catch {
+      throw new UnauthorizedException('Error al verificar credenciales')
+    }
+
+    if (claveDesencriptada !== dto.clave) {
+      throw new UnauthorizedException('Contraseña incorrecta')
+    }
+
+    const rol = PERFIL_ROLES[usuario.perfilId] ?? 'usuario'
+
+    const payload = {
+      sub: usuario.usuarioId,
+      email: usuario.usuarioEmail,
+      perfilId: usuario.perfilId,
+      rol,
+    }
+
+    const token = this.jwtService.sign(payload)
+
+    return {
+      accessToken: token,
+      usuario: {
+        usuarioId: usuario.usuarioId,
+        email: usuario.usuarioEmail,
+        perfilId: usuario.perfilId,
+        rol,
+      },
+    }
+  }
+
+  async registrarEmpresa(dto: RegistrarEmpresaDto) {
+    if (!dto.habeasData) {
+      throw new BadRequestException('Debe aceptar los Términos y Condiciones')
+    }
+
+    // PValidarCorreoRegistro — verificar que el email no exista
+    const emailExiste = await this.usuarioRepo.findOne({
+      where: { usuarioEmail: dto.usuarioEmail },
+    })
+    if (emailExiste) {
+      throw new ConflictException(
+        'El correo ya está registrado, por favor verificar o contactar al administrador',
+      )
+    }
+
+    // PValidarNit — verificar que el NIT no exista
+    const nitExiste = await this.empresaRepo.findOne({
+      where: { empresaIdentificacion: dto.empresaIdentificacion },
+    })
+    if (nitExiste) {
+      throw new ConflictException(
+        'El NIT ya está registrado, por favor verificar o contactar al administrador',
+      )
+    }
+
+    // Equivalente a GetEncryptionKey() + Encrypt64()
+    const llaveEncriptacion = getEncryptionKey()
+    const claveEncriptada = encrypt64(dto.usuarioClave, llaveEncriptacion)
+
+    // Transacción: Usuario + Empresa (equivalente al commit doble de GeneXus)
+    const queryRunner = this.dataSource.createQueryRunner()
+    await queryRunner.connect()
+    await queryRunner.startTransaction()
+
+    try {
+      // Obtener NEXTVAL del sequence de Oracle (igual que GeneXus internamente)
+      const seqResult = await queryRunner.query('SELECT USUARIOID.NEXTVAL FROM dual')
+      const nextUsuarioId: number = seqResult[0]['NEXTVAL']
+
+      // Crear Usuario (PerfilId=7 → empresa)
+      const usuario = new Usuario()
+      usuario.usuarioId = nextUsuarioId
+      usuario.perfilId = 7
+      usuario.usuarioClave = claveEncriptada
+      usuario.usuarioFechaRegistro = new Date()
+      usuario.usuarioEstado = 1
+      usuario.usuarioTipo = 2
+      usuario.usuarioEmail = dto.usuarioEmail
+      usuario.usuarioLlaveEncriptacion = llaveEncriptacion
+
+      const usuarioGuardado = (await queryRunner.manager.save(usuario)) as Usuario
+
+      const seqEmpresa = await queryRunner.query('SELECT EMPRESAID.NEXTVAL FROM dual')
+      const nextEmpresaId: number = seqEmpresa[0]['NEXTVAL']
+
+      // Crear Empresa con valores secundarios por defecto (igual a GeneXus)
+      const empresa = new Empresa()
+      empresa.empresaId = nextEmpresaId
+      empresa.tipoDocumentoIdentidadId = dto.tipoDocumentoIdentidadId
+      empresa.empresaIdentificacion = dto.empresaIdentificacion
+      empresa.empresaDigitoVerificacion = dto.empresaDigitoVerificacion
+      empresa.empresaRazonSocial = dto.empresaRazonSocial
+      empresa.empresaSigla = dto.empresaSigla
+      empresa.empresaEmail = dto.usuarioEmail
+      empresa.empresaFechaRegistro = new Date()
+      empresa.coberturaEmpresaId = 1
+      empresa.departamentoEmpresaId = 1
+      empresa.ciudadEmpresaId = 1
+      empresa.ciiuId = 1
+      empresa.tipoEmpresaId = 1
+      empresa.tamanoEmpresaId = 1
+      empresa.sectorId = 1
+      empresa.subSectorId = 1
+      empresa.tipoIdentificacionRep = 1
+
+      await queryRunner.manager.save(empresa)
+
+      await queryRunner.commitTransaction()
+
+      return {
+        message: 'Usuario registrado exitosamente',
+        usuarioId: usuarioGuardado.usuarioId,
+      }
+    } catch (err) {
+      await queryRunner.rollbackTransaction()
+      throw err
+    } finally {
+      await queryRunner.release()
+    }
+  }
+
+  async perfil(usuarioId: number) {
+    const usuario = await this.usuarioRepo.findOne({
+      where: { usuarioId },
+      select: ['usuarioId', 'usuarioEmail', 'perfilId', 'usuarioEstado'],
+    })
+    if (!usuario) throw new UnauthorizedException()
+    return {
+      ...usuario,
+      rol: PERFIL_ROLES[usuario.perfilId] ?? 'usuario',
+    }
+  }
+}

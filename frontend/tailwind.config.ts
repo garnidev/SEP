@@ -29,6 +29,12 @@ const config: Config = {
           500: '#39a900',
           600: '#349a00',
         },
+        // ── GOV.CO (colores oficiales del Estado colombiano) ──
+        govco: {
+          top:    '#3465CC',  // barra superior GOV.CO
+          bottom: '#015dca',  // barra inferior GOV.CO (footer)
+          nav:    '#00304d',  // barra de navegación institucional
+        },
         // ── Cerulean ──
         cerulean: {
           50:  '#e6eaed',

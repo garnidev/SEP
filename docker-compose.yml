@@ -15,18 +15,21 @@ services:
     container_name: sep_backend
     restart: unless-stopped
     env_file:
-      - .env
+      - backend/.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - sep-internal
-      - sep-shared-network
 
   nginx:
     image: nginx:stable-alpine
     container_name: sep_nginx
     restart: unless-stopped
     depends_on:
-      - backend
-      - frontend
+      backend:
+        condition: service_started
+      frontend:
+        condition: service_started
     ports:
       - "8080:80"
     volumes:
@@ -37,5 +40,3 @@ services:
 networks:
   sep-internal:
     driver: bridge
-  sep-shared-network:
-    external: true
