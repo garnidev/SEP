@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common'
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common'
+import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger'
 import { AuthService } from './auth.service'
 import { LoginDto } from './dto/login.dto'
 import { RegistrarEmpresaDto } from './dto/registrar-empresa.dto'
+import { RegistrarPersonaDto } from './dto/registrar-persona.dto'
 import { JwtAuthGuard } from './guards/jwt-auth.guard'
 import { CurrentUser } from './decorators/current-user.decorator'
 
@@ -11,6 +12,13 @@ import { CurrentUser } from './decorators/current-user.decorator'
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Get('tipos-documento')
+  @ApiOperation({ summary: 'Lista de tipos de documento filtrada por persona o empresa' })
+  @ApiQuery({ name: 'para', enum: ['persona', 'empresa'], required: true })
+  tiposDocumento(@Query('para') para: 'persona' | 'empresa') {
+    return this.authService.tiposDocumento(para)
+  }
+
   @Post('login')
   @ApiOperation({ summary: 'Iniciar sesión en el SEP' })
   login(@Body() dto: LoginDto) {
@@ -18,9 +26,15 @@ export class AuthController {
   }
 
   @Post('registrar-empresa')
-  @ApiOperation({ summary: 'Registro público de empresa/gremio/asociación' })
+  @ApiOperation({ summary: 'Registro público de empresa/gremio/asociación (Proponente)' })
   registrarEmpresa(@Body() dto: RegistrarEmpresaDto) {
     return this.authService.registrarEmpresa(dto)
+  }
+
+  @Post('registrar-persona')
+  @ApiOperation({ summary: 'Registro público de persona/usuario natural' })
+  registrarPersona(@Body() dto: RegistrarPersonaDto) {
+    return this.authService.registrarPersona(dto)
   }
 
   @Get('perfil')

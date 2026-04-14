@@ -8,10 +8,12 @@ import { AuthService } from './auth.service'
 import { JwtStrategy } from './strategies/jwt.strategy'
 import { Usuario } from './entities/usuario.entity'
 import { Empresa } from './entities/empresa.entity'
+import { Persona } from './entities/persona.entity'
+import { TipoDocumentoIdentidad } from './entities/tipo-documento.entity'
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Usuario, Empresa]),
+    TypeOrmModule.forFeature([Usuario, Empresa, Persona, TipoDocumentoIdentidad]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],

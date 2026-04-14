@@ -3,6 +3,11 @@ import {
   CalendarDays, ClipboardList, Wallet, TrendingUp,
 } from 'lucide-react'
 
+export const metadata = {
+  title: 'Panel de Control',
+  description: 'Panel administrativo del Sistema Especializado de Proyectos.',
+}
+
 const stats = [
   { label: 'Beneficiarios activos', value: '—', icon: Users,      variant: 'green'   },
   { label: 'Empresas vinculadas',   value: '—', icon: Building2,  variant: 'purpura' },

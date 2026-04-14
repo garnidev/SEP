@@ -10,7 +10,10 @@ const jakarta = Plus_Jakarta_Sans({
 })
 
 export const metadata: Metadata = {
-  title: 'SEP — Sistema Especializado de Proyectos',
+  title: {
+    default: 'SEP — Sistema Especializado de Proyectos',
+    template: '%s | SEP — SENA',
+  },
   description: 'Plataforma de gestión de proyectos GGPC — SENA',
 }
 

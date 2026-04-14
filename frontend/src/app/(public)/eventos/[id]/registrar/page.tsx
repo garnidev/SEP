@@ -5,6 +5,14 @@ interface Props {
   params: Promise<{ id: string }>
 }
 
+export async function generateMetadata({ params }: Props) {
+  const { id } = await params
+  const evento = await getEvento(id)
+  return {
+    title: evento?.nombreEvento ? `Registro: ${evento.nombreEvento}` : 'Registro a Evento',
+  }
+}
+
 async function getEvento(id: string) {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://sep_backend:4000'

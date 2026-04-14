@@ -12,8 +12,11 @@ import * as crypto from 'crypto'
 const { twofish } = require('twofish')
 import { Usuario } from './entities/usuario.entity'
 import { Empresa } from './entities/empresa.entity'
+import { Persona } from './entities/persona.entity'
+import { TipoDocumentoIdentidad } from './entities/tipo-documento.entity'
 import { LoginDto } from './dto/login.dto'
 import { RegistrarEmpresaDto } from './dto/registrar-empresa.dto'
+import { RegistrarPersonaDto } from './dto/registrar-persona.dto'
 
 /**
  * Replica exacta de GeneXus GetEncryptionKey():
@@ -77,9 +80,30 @@ export class AuthService {
     private readonly usuarioRepo: Repository<Usuario>,
     @InjectRepository(Empresa)
     private readonly empresaRepo: Repository<Empresa>,
+    @InjectRepository(Persona)
+    private readonly personaRepo: Repository<Persona>,
+    @InjectRepository(TipoDocumentoIdentidad)
+    private readonly tipoDocRepo: Repository<TipoDocumentoIdentidad>,
     private readonly jwtService: JwtService,
     private readonly dataSource: DataSource,
   ) {}
+
+  async tiposDocumento(para: 'persona' | 'empresa') {
+    const col =
+      para === 'persona'
+        ? 'TIPODOCUMENTOIDENTIDADPERSONA'
+        : 'TIPODOCUMENTOIDENTIDADEMPRESA'
+
+    // Raw query: TRIM() para quitar espacios de NCHAR, ORDER BY nombre ya trimeado
+    const rows: Array<{ id: number; nombre: string }> = await this.dataSource.query(
+      `SELECT TIPODOCUMENTOIDENTIDADID AS "id",
+              TRIM(TIPODOCUMENTOIDENTIDADNOMBRE) AS "nombre"
+         FROM TIPODOCUMENTOIDENTIDAD
+        WHERE ${col} = 1
+        ORDER BY TRIM(TIPODOCUMENTOIDENTIDADNOMBRE) ASC`,
+    )
+    return rows
+  }
 
   async login(dto: LoginDto) {
     if (!dto.email || !dto.clave) {
@@ -192,8 +216,8 @@ export class AuthService {
       empresa.tipoDocumentoIdentidadId = dto.tipoDocumentoIdentidadId
       empresa.empresaIdentificacion = dto.empresaIdentificacion
       empresa.empresaDigitoVerificacion = dto.empresaDigitoVerificacion
-      empresa.empresaRazonSocial = dto.empresaRazonSocial
-      empresa.empresaSigla = dto.empresaSigla
+      empresa.empresaRazonSocial = dto.empresaRazonSocial.trim()
+      empresa.empresaSigla = (dto.empresaSigla ?? '').trim()
       empresa.empresaEmail = dto.usuarioEmail
       empresa.empresaFechaRegistro = new Date()
       empresa.coberturaEmpresaId = 1
@@ -208,6 +232,88 @@ export class AuthService {
 
       await queryRunner.manager.save(empresa)
 
+      await queryRunner.commitTransaction()
+
+      return {
+        message: 'Usuario registrado exitosamente',
+        usuarioId: usuarioGuardado.usuarioId,
+      }
+    } catch (err) {
+      await queryRunner.rollbackTransaction()
+      throw err
+    } finally {
+      await queryRunner.release()
+    }
+  }
+
+  async registrarPersona(dto: RegistrarPersonaDto) {
+    if (!dto.habeasData) {
+      throw new BadRequestException('Debe aceptar los Términos y Condiciones')
+    }
+
+    // PValidarEmailPersona — email no debe existir
+    const emailExiste = await this.usuarioRepo.findOne({
+      where: { usuarioEmail: dto.usuarioEmail },
+    })
+    if (emailExiste) {
+      throw new ConflictException(
+        'El correo ya está registrado, por favor verificar o contactar al administrador',
+      )
+    }
+
+    // PValidarIdentificacionPersona — identificación no debe existir
+    const idExiste = await this.personaRepo.findOne({
+      where: { personaIdentificacion: dto.personaIdentificacion },
+    })
+    if (idExiste) {
+      throw new ConflictException(
+        'El número de identificación ya está registrado, por favor verificar o contactar con el administrador',
+      )
+    }
+
+    const llaveEncriptacion = getEncryptionKey()
+    const claveEncriptada = encrypt64(dto.usuarioClave, llaveEncriptacion)
+
+    const queryRunner = this.dataSource.createQueryRunner()
+    await queryRunner.connect()
+    await queryRunner.startTransaction()
+
+    try {
+      const seqUsuario = await queryRunner.query('SELECT USUARIOID.NEXTVAL FROM dual')
+      const nextUsuarioId: number = seqUsuario[0]['NEXTVAL']
+
+      // Crear Usuario (PerfilId=8 → persona/usuario)
+      const usuario = new Usuario()
+      usuario.usuarioId = nextUsuarioId
+      usuario.perfilId = 8
+      usuario.usuarioClave = claveEncriptada
+      usuario.usuarioFechaRegistro = new Date()
+      usuario.usuarioEstado = 1
+      usuario.usuarioTipo = 1
+      usuario.usuarioEmail = dto.usuarioEmail
+      usuario.usuarioLlaveEncriptacion = llaveEncriptacion
+
+      const usuarioGuardado = (await queryRunner.manager.save(usuario)) as Usuario
+
+      const seqPersona = await queryRunner.query('SELECT PERSONAID.NEXTVAL FROM dual')
+      const nextPersonaId: number = seqPersona[0]['NEXTVAL']
+
+      // Crear Persona
+      const persona = new Persona()
+      persona.personaId = nextPersonaId
+      persona.tipoDocumentoIdentidadId = dto.tipoDocumentoIdentidadId
+      persona.personaIdentificacion = dto.personaIdentificacion
+      persona.personaNombres = dto.personaNombres.trim()
+      persona.personaPrimerApellido = dto.personaPrimerApellido.trim()
+      persona.personaSegundoApellido = (dto.personaSegundoApellido ?? '').trim()
+      persona.personaEmail = dto.usuarioEmail
+      persona.personaFechaRegistro = new Date()
+      persona.generoId = 3
+      persona.ciudadId = 1
+      persona.personaHabeasData = 'SI'
+      persona.personaHabeasDataE = 'NA'
+
+      await queryRunner.manager.save(persona)
       await queryRunner.commitTransaction()
 
       return {

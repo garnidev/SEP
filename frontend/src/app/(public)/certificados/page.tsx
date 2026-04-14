@@ -2,7 +2,7 @@ import { Award } from 'lucide-react'
 import { CertificadosForm } from '@/components/public/certificados/certificados-form'
 
 export const metadata = {
-  title: 'Descarga de Certificados — SEP',
+  title: 'Descarga de Certificados',
   description: 'Descarga tu certificado de participación en los eventos del GGPC SENA.',
 }
 

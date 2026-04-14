@@ -2,7 +2,7 @@ import { CalendarDays } from 'lucide-react'
 import { EventosList } from '@/components/public/eventos/eventos-list'
 
 export const metadata = {
-  title: 'Eventos Programados — SEP',
+  title: 'Eventos Programados',
   description: 'Listado de eventos activos del Grupo de Gestión para la Productividad y la Competitividad.',
 }
 

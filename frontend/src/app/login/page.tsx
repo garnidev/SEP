@@ -2,7 +2,7 @@
 
 import { ToastBetowa } from '@/components/ui/toast-betowa'
 import api from '@/lib/api'
-import { AlertCircle, ArrowLeft, Loader2, LogIn } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Building2, Loader2, LogIn, UserPlus, X } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -25,6 +25,7 @@ export default function LoginPage() {
   const [toastEmail, setToastEmail] = useState('')
   const [toastError, setToastError] = useState(false)
   const [toastErrorMsg, setToastErrorMsg] = useState('')
+  const [registroModal, setRegistroModal] = useState(false)
 
   async function handleSubmit(e: { preventDefault(): void }) {
     e.preventDefault()
@@ -57,8 +58,9 @@ export default function LoginPage() {
       setError(msg)
       setToastErrorMsg(msg)
       setToastError(true)
-      recaptchaRef.current?.reset()
       setCaptchaOk(false)
+      // Delay recaptcha reset so it doesn't trigger a re-render that hides the toast
+      setTimeout(() => recaptchaRef.current?.reset(), 300)
     } finally {
       setLoading(false)
     }
@@ -211,9 +213,13 @@ export default function LoginPage() {
 
               <p className="text-center text-xs text-neutral-400">
                 ¿No tienes cuenta?{' '}
-                <Link href="/eventos" className="text-green-500 hover:underline">
-                  Registrate en el SEP
-                </Link>
+                <button
+                  type="button"
+                  onClick={() => setRegistroModal(true)}
+                  className="text-green-500 hover:underline font-semibold"
+                >
+                  Registrarse en el SEP
+                </button>
               </p>
             </div>
 
@@ -230,6 +236,77 @@ export default function LoginPage() {
           </p>
         </div>
       </div>
+
+      {/* Modal selección tipo de registro */}
+      {registroModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}
+          onClick={() => setRegistroModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-[#00304D] px-6 py-4 flex items-center justify-between">
+              <h2 className="text-white font-semibold text-base">Registrarse en el SEP</h2>
+              <button
+                type="button"
+                onClick={() => setRegistroModal(false)}
+                className="text-white/70 hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Opciones */}
+            <div className="p-6 flex flex-col sm:flex-row gap-4">
+              {/* Proponente */}
+              <Link
+                href="/registro/proponente"
+                onClick={() => setRegistroModal(false)}
+                className="flex-1 flex flex-col items-center gap-3 p-6 border-2 border-cerulean-500 rounded-xl hover:bg-cerulean-500 group transition-colors text-center"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-cerulean-500 group-hover:bg-white flex items-center justify-center transition-colors shadow-md">
+                  <Building2 size={28} className="text-white group-hover:text-cerulean-500 transition-colors" />
+                </div>
+                <div>
+                  <p className="font-bold text-cerulean-500 group-hover:text-white text-sm transition-colors">
+                    Proponente
+                  </p>
+                  <p className="text-xs text-neutral-500 group-hover:text-white/80 mt-0.5 transition-colors">
+                    Empresa / Gremio / Asociación
+                  </p>
+                </div>
+              </Link>
+
+              {/* Usuario / Persona */}
+              <Link
+                href="/registro/usuario"
+                onClick={() => setRegistroModal(false)}
+                className="flex-1 flex flex-col items-center gap-3 p-6 border-2 border-lime-500 rounded-xl hover:bg-lime-500 group transition-colors text-center"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-lime-500 group-hover:bg-white flex items-center justify-center transition-colors shadow-md">
+                  <UserPlus size={28} className="text-white group-hover:text-lime-500 transition-colors" />
+                </div>
+                <div>
+                  <p className="font-bold text-lime-600 group-hover:text-white text-sm transition-colors">
+                    Usuario
+                  </p>
+                  <p className="text-xs text-neutral-500 group-hover:text-white/80 mt-0.5 transition-colors">
+                    Persona natural
+                  </p>
+                </div>
+              </Link>
+            </div>
+
+            <p className="text-center text-[11px] text-neutral-400 pb-5">
+              Selecciona el tipo de cuenta que deseas crear
+            </p>
+          </div>
+        </div>
+      )}
     </>
   )
 }
