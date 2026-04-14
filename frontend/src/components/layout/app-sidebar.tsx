@@ -1,145 +1,252 @@
 'use client'
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { useState } from 'react'
-import {
-  LayoutDashboard,
-  ChevronLeft,
-  ChevronRight,
-  Users,
-  FileCheck2,
-  Building2,
-  CalendarDays,
-  ClipboardList,
-  ScrollText,
-  Wallet,
-} from 'lucide-react'
+import { clearSepAuth, type SepUsuario } from '@/lib/auth'
+import api from '@/lib/api'
 import { cn } from '@/lib/utils'
+import type { LucideIcon } from 'lucide-react'
+import {
+  Award, Building2, CalendarDays, ChevronLeft, ChevronRight,
+  ClipboardList, Cog, FileCheck2, FileText, FolderKanban,
+  Home, LayoutDashboard, List, LogOut, ScrollText, Users, Wallet, X,
+} from 'lucide-react'
+import Image from 'next/image'
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
-const navGroups = [
-  {
-    label: 'Principal',
-    items: [
-      { id: 'inicio', label: 'Inicio',    icon: LayoutDashboard, path: '/panel' },
-    ],
-  },
-  {
-    label: 'Gestión',
-    items: [
-      { id: 'beneficiarios', label: 'Beneficiarios',  icon: Users,         path: '/beneficiarios' },
-      { id: 'empresas',      label: 'Empresas',        icon: Building2,     path: '/empresas' },
-      { id: 'convenios',     label: 'Convenios',       icon: ScrollText,    path: '/convenios' },
-      { id: 'cronograma',    label: 'Cronograma',      icon: CalendarDays,  path: '/cronograma' },
-    ],
-  },
-  {
-    label: 'Módulos',
-    items: [
-      { id: 'certificacion', label: 'Certificación',  icon: FileCheck2,    path: '/certificacion' },
-      { id: 'desembolsos',   label: 'Desembolsos',    icon: Wallet,        path: '/desembolsos' },
-      { id: 'evaluaciones',  label: 'Evaluaciones',   icon: ClipboardList, path: '/evaluaciones' },
-    ],
-  },
-]
+// ── Mapa URL GeneXus → ruta Next.js ─────────────────────────────────────────
 
-export function AppSidebar() {
+const URL_MAP: Record<string, string> = {
+  'InicioEmpresa.aspx':        '/panel',
+  'InicioUsuario.aspx':        '/panel',
+  'DatosBasicosEmpresa.aspx':  '/panel/datos',
+  'Necesidades.aspx':          '/panel/necesidades',
+  'Proyectos.aspx':            '/panel/proyectos',
+  'WPConvenios.aspx':          '/panel/convenios',
+  'wptratamientodatos.aspx':   '/panel/beneficiarios',
+  'Empresas.aspx':             '/panel/empresas',
+  'Convenios.aspx':            '/panel/convenios',
+  'Cronograma.aspx':           '/panel/cronograma',
+  'Certificados.aspx':         '/panel/certificacion',
+  'Desembolsos.aspx':          '/panel/desembolsos',
+  'Evaluaciones.aspx':         '/panel/evaluaciones',
+}
+
+// ── Mapa ícono FontAwesome → Lucide ─────────────────────────────────────────
+
+const ICON_MAP: Record<string, LucideIcon> = {
+  'fa-home':              Home,
+  'icon-home':            Home,
+  'fa-address-card':      Building2,
+  'icon-user':            Building2,
+  'fa-list':              ClipboardList,
+  'fa-tasks':             ClipboardList,
+  'fa-clipboard-list':    ClipboardList,
+  'fa-folder':            FolderKanban,
+  'fa-project-diagram':   FolderKanban,
+  'fa-handshake':         ScrollText,
+  'fa-file-contract':     ScrollText,
+  'fa-users':             Users,
+  'icon-people':          Users,
+  'fa-award':             FileCheck2,
+  'fa-certificate':       Award,
+  'fa-file-alt':          FileText,
+  'fa-file':              FileText,
+  'fa-calendar':          CalendarDays,
+  'fa-calendar-alt':      CalendarDays,
+  'fa-money-bill':        Wallet,
+  'fa-money-bill-alt':    Wallet,
+  'fa-clipboard-check':   ClipboardList,
+  'fa-building':          Building2,
+  'fa-cog':               Cog,
+  'fa-tachometer-alt':    LayoutDashboard,
+  'fa-chart-bar':         List,
+}
+
+function faToLucide(iconClass: string): LucideIcon {
+  // e.g. "nav-icon fas fa-address-card" → "fa-address-card"
+  const parts = iconClass.split(' ')
+  for (const part of parts) {
+    if (ICON_MAP[part]) return ICON_MAP[part]
+  }
+  return FileText // default
+}
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
+interface MenuItem { desc: string; url: string; icono: string }
+
+interface AppSidebarProps {
+  usuario: SepUsuario | null
+  mobileOpen: boolean
+  onMobileClose: () => void
+}
+
+// ── Component ────────────────────────────────────────────────────────────────
+
+export function AppSidebar({ usuario, mobileOpen, onMobileClose }: AppSidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([])
+
+  useEffect(() => {
+    api.get<MenuItem[]>('/empresa/menu')
+      .then(r => setMenuItems(r.data))
+      .catch(() => setMenuItems([]))
+  }, [])
+
+  function handleLogout() {
+    clearSepAuth()
+    router.push('/login')
+  }
+
+  function renderNav(isMobile: boolean) {
+    if (menuItems.length === 0) return null
+
+    return (
+      <nav className="flex flex-col gap-0.5 flex-1 overflow-y-auto">
+        {menuItems.map((item, i) => {
+          const path = URL_MAP[item.url] ?? null
+          const Icon = faToLucide(item.icono)
+          const active = path !== null && pathname === path
+          const isDisabled = path === null
+
+          if (isDisabled) {
+            return (
+              <span
+                key={i}
+                title={isMobile || !collapsed ? undefined : item.desc}
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-white/30 cursor-not-allowed',
+                  collapsed && !isMobile ? 'justify-center' : ''
+                )}
+              >
+                <Icon size={17} className="flex-shrink-0" />
+                {(!collapsed || isMobile) && (
+                  <span className="truncate">{item.desc}
+                    <span className="ml-1 text-[9px] bg-white/10 px-1 py-0.5 rounded">próximo</span>
+                  </span>
+                )}
+              </span>
+            )
+          }
+
+          return (
+            <Link
+              key={i}
+              href={path}
+              onClick={isMobile ? onMobileClose : undefined}
+              title={collapsed && !isMobile ? item.desc : undefined}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 no-underline',
+                active
+                  ? 'bg-white/[0.15] text-white shadow-sm'
+                  : 'text-white/65 hover:bg-white/[0.08] hover:text-white',
+                collapsed && !isMobile ? 'justify-center' : ''
+              )}
+            >
+              <Icon size={17} className="flex-shrink-0" />
+              {(!collapsed || isMobile) && (
+                <>
+                  <span className="truncate">{item.desc}</span>
+                  {active && (
+                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
+                  )}
+                </>
+              )}
+            </Link>
+          )
+        })}
+      </nav>
+    )
+  }
+
+  function renderUser(isMobile: boolean) {
+    return (
+      <div className={cn(
+        'flex items-center gap-3 mt-6 p-3 rounded-xl bg-white/[0.07] border border-white/10',
+        collapsed && !isMobile ? 'flex-col gap-2' : ''
+      )}>
+        <div className="w-8 h-8 rounded-lg bg-green-500 flex items-center justify-center flex-shrink-0 text-white text-xs font-bold">
+          {(usuario?.nombre?.[0] ?? 'U').toUpperCase()}
+        </div>
+        {(!collapsed || isMobile) && (
+          <div className="flex flex-col min-w-0 flex-1">
+            <span className="text-white text-xs font-semibold truncate">
+              {usuario?.nombre ?? usuario?.email ?? '—'}
+            </span>
+            <span className="text-white/50 text-[10px] truncate">
+              {usuario?.perfilId === 7 ? 'Gremio / Empresa / Asociación' : 'Usuario interno'}
+            </span>
+          </div>
+        )}
+        <button
+          onClick={handleLogout}
+          title="Cerrar sesión"
+          className="p-1.5 rounded-lg hover:bg-red-500/30 text-white/50 hover:text-red-300 transition-colors flex-shrink-0"
+        >
+          <LogOut size={15} />
+        </button>
+      </div>
+    )
+  }
+
+  function renderHeader(isMobile: boolean) {
+    return (
+      <div className={cn('flex items-center gap-3 mb-7 flex-shrink-0', collapsed && !isMobile ? 'justify-center' : '')}>
+        <Image src="/images/sena-logo.svg" alt="SENA" width={34} height={34} className="flex-shrink-0" />
+        {(!collapsed || isMobile) && (
+          <div className="flex flex-col leading-tight min-w-0">
+            <span className="text-white font-bold text-sm">SEP</span>
+            <span className="text-white/60 text-[10px]">GGPC · SENA</span>
+          </div>
+        )}
+        {isMobile && (
+          <button onClick={onMobileClose}
+            className="ml-auto p-1 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-colors"
+            aria-label="Cerrar menú">
+            <X size={18} />
+          </button>
+        )}
+      </div>
+    )
+  }
 
   return (
-    <aside
-      className={cn(
-        'relative flex flex-col min-h-screen bg-purpura-500 text-white transition-all duration-250 flex-shrink-0 z-20',
-        collapsed ? 'w-[72px] px-3 py-5' : 'w-[260px] px-4 py-5'
-      )}
-    >
-      {/* Logo */}
-      <div className="mb-8">
-        {collapsed ? (
-          <div className="flex justify-center">
-            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-[10px]">
-              S
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-[10px] text-center leading-tight px-1">
-              SENA
-            </div>
-            <div className="w-px h-8 bg-white/30" />
-            <div className="flex flex-col">
-              <span className="text-white font-bold text-xs leading-tight">SEP</span>
-              <span className="text-white/60 text-[10px] leading-tight">GGPC</span>
-            </div>
-          </div>
-        )}
-      </div>
+    <>
+      {/* ── Desktop sidebar ────────────────────────────────────────────── */}
+      <aside className={cn(
+        'relative hidden lg:flex flex-col min-h-screen bg-[#00304D] flex-shrink-0 z-20 transition-all duration-250',
+        collapsed ? 'w-[68px] px-3 py-5' : 'w-[240px] px-4 py-5'
+      )}>
+        {renderHeader(false)}
+        {renderNav(false)}
+        {renderUser(false)}
 
-      {/* Nav groups */}
-      <nav className="flex flex-col gap-4 flex-1">
-        {navGroups.map((group) => (
-          <div key={group.label} className="flex flex-col gap-1">
-            {!collapsed && (
-              <span className="px-3 text-[10px] font-semibold text-white/40 uppercase tracking-widest mb-1">
-                {group.label}
-              </span>
-            )}
-            {group.items.map((item) => {
-              const isActive = pathname === item.path
-              return (
-                <Link
-                  key={item.id}
-                  href={item.path}
-                  title={collapsed ? item.label : undefined}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 no-underline',
-                    isActive
-                      ? 'bg-white/[0.18] text-white'
-                      : 'text-white/70 hover:bg-white/10 hover:text-white'
-                  )}
-                >
-                  <item.icon size={18} className="flex-shrink-0" />
-                  {!collapsed && <span className="truncate">{item.label}</span>}
-                </Link>
-              )
-            })}
-          </div>
-        ))}
-      </nav>
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="absolute top-1/2 -right-3 -translate-y-1/2 w-6 h-6 rounded-full bg-[#00304D] border-2 border-neutral-200 flex items-center justify-center text-white hover:border-green-400 transition-colors z-10"
+          aria-label={collapsed ? 'Expandir menú' : 'Colapsar menú'}
+        >
+          {collapsed ? <ChevronRight size={11} /> : <ChevronLeft size={11} />}
+        </button>
+      </aside>
 
-      {/* Collapse toggle */}
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="absolute top-1/2 -right-3 -translate-y-1/2 w-6 h-6 rounded-full bg-purpura-600 border-2 border-neutral-100 flex items-center justify-center text-white hover:bg-purpura-700 transition-colors z-10"
-        aria-label={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
-      >
-        {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
-      </button>
-
-      {/* User area */}
+      {/* ── Mobile backdrop + drawer ────────────────────────────────────── */}
       <div
-        className={cn(
-          'flex items-center gap-3 p-3 rounded-lg bg-green-500 mt-6 cursor-pointer hover:bg-green-600 transition-colors',
-          collapsed && 'justify-center'
-        )}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="https://ui-avatars.com/api/?name=Admin&background=39a900&color=fff&size=36"
-          alt="Admin"
-          className="w-9 h-9 rounded-full flex-shrink-0"
-        />
-        {!collapsed && (
-          <>
-            <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-sm font-semibold text-white">Nombre Admin</span>
-              <span className="text-xs text-white/70">Administrador</span>
-            </div>
-            <ChevronRight size={16} className="text-white/70 flex-shrink-0" />
-          </>
-        )}
+        className={cn('fixed inset-0 z-40 bg-black/50 lg:hidden transition-opacity duration-200',
+          mobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none')}
+        onClick={onMobileClose} aria-hidden
+      />
+      <div className={cn(
+        'fixed inset-y-0 left-0 z-50 w-[260px] bg-[#00304D] px-4 py-5 flex flex-col lg:hidden transition-transform duration-250',
+        mobileOpen ? 'translate-x-0' : '-translate-x-full'
+      )}>
+        {renderHeader(true)}
+        {renderNav(true)}
+        {renderUser(true)}
       </div>
-    </aside>
+    </>
   )
 }

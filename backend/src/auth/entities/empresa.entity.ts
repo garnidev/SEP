@@ -52,4 +52,49 @@ export class Empresa {
 
   @Column({ name: 'TIPOIDENTIFICACIONREP', type: 'number', nullable: true })
   tipoIdentificacionRep: number
+
+  // ── Ubicación ─────────────────────────────────────────────────────────────
+
+  @Column({ name: 'EMPRESADIRECCION', length: 300, nullable: true })
+  empresaDireccion: string
+
+  @Column({ name: 'EMPRESATELEFONO', length: 50, nullable: true })
+  empresaTelefono: string
+
+  @Column({ name: 'EMPRESACELULAR', length: 50, nullable: true })
+  empresaCelular: string
+
+  @Column({ name: 'EMPRESAINDICATIVO', type: 'number', nullable: true })
+  empresaIndicativo: number
+
+  @Column({ name: 'EMPRESAWEBSITE', length: 200, nullable: true })
+  empresaWebsite: string
+
+  // ── Económicos ────────────────────────────────────────────────────────────
+
+  @Column({ name: 'EMPRESACERTIFCOMP', length: 10, nullable: true })
+  empresaCertifComp: string
+
+  @Column({ name: 'EMPRESAEXPERTTECN', length: 10, nullable: true })
+  empresaExpertTecn: string
+
+  @Column({ name: 'EMPRESAEXPORTADORA', length: 10, nullable: true })
+  empresaExportadora: string
+
+  // ── Representante legal ───────────────────────────────────────────────────
+
+  @Column({ name: 'EMPRESAREPDOCUMENTO', length: 50, nullable: true })
+  empresaRepDocumento: string
+
+  @Column({ name: 'EMPRESAREP', length: 200, nullable: true })
+  empresaRep: string
+
+  @Column({ name: 'EMPRESAREPCARGO', length: 100, nullable: true })
+  empresaRepCargo: string
+
+  @Column({ name: 'EMPRESAREPCORREO', length: 200, nullable: true })
+  empresaRepCorreo: string
+
+  @Column({ name: 'EMPRESAREPTEL', length: 50, nullable: true })
+  empresaRepTel: string
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import { Modal } from '@/components/ui/modal'
 import Image from 'next/image'
 
 interface HabeasDataModalProps {
@@ -8,18 +9,9 @@ interface HabeasDataModalProps {
 }
 
 export function HabeasDataModal({ open, onClose }: HabeasDataModalProps) {
-  if (!open) return null
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal open={open} onClose={onClose} maxWidth="max-w-2xl">
+      <div className="flex flex-col max-h-[90vh]">
         {/* Encabezado */}
         <div className="bg-[#00304D] px-6 py-4 flex items-center gap-3 flex-shrink-0">
           <Image src="/images/sena-logo.svg" alt="SENA" width={40} height={40}
@@ -84,6 +76,6 @@ export function HabeasDataModal({ open, onClose }: HabeasDataModalProps) {
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }

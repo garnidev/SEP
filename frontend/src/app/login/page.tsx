@@ -1,8 +1,9 @@
 'use client'
 
+import { Modal } from '@/components/ui/modal'
 import { ToastBetowa } from '@/components/ui/toast-betowa'
 import api from '@/lib/api'
-import { AlertCircle, ArrowLeft, Building2, Loader2, LogIn, UserPlus, X } from 'lucide-react'
+import { ArrowLeft, Building2, Loader2, LogIn, UserPlus } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -19,24 +20,38 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [clave, setClave] = useState('')
   const [captchaOk, setCaptchaOk] = useState(false)
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState(false)
-  const [toastEmail, setToastEmail] = useState('')
-  const [toastError, setToastError] = useState(false)
-  const [toastErrorMsg, setToastErrorMsg] = useState('')
+  const [toastNombre, setToastNombre] = useState('')
   const [registroModal, setRegistroModal] = useState(false)
+
+  // Error banner: always in DOM, CSS-only visibility — timer lives in a ref so re-renders can't kill it
+  const [errMsg, setErrMsg] = useState('')
+  const [errVisible, setErrVisible] = useState(false)
+  const errTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function showErr(msg: string) {
+    if (errTimer.current) clearTimeout(errTimer.current)
+    setErrMsg(msg)
+    setErrVisible(true)
+    errTimer.current = setTimeout(() => setErrVisible(false), 6000)
+  }
+
+  function hideErr() {
+    if (errTimer.current) clearTimeout(errTimer.current)
+    setErrVisible(false)
+  }
 
   async function handleSubmit(e: { preventDefault(): void }) {
     e.preventDefault()
-    setError('')
+    hideErr()
 
     if (!email.trim() || !clave.trim()) {
-      setError('Correo y contraseña son requeridos')
+      showErr('Correo y contraseña son requeridos')
       return
     }
     if (!captchaOk) {
-      setError('Por favor completa el reCAPTCHA')
+      showErr('Por favor completa el reCAPTCHA')
       return
     }
 
@@ -44,23 +59,25 @@ export default function LoginPage() {
     try {
       const res = await api.post<{
         accessToken: string
-        usuario: { perfilId: number; email: string }
+        usuario: { perfilId: number; email: string; nombre: string }
       }>('/auth/login', { email, clave })
 
       localStorage.setItem('sep_token', res.data.accessToken)
-      setToastEmail(res.data.usuario.email)
+      localStorage.setItem('sep_usuario', JSON.stringify({
+        email: res.data.usuario.email,
+        nombre: res.data.usuario.nombre,
+        perfilId: res.data.usuario.perfilId,
+      }))
+      setToastNombre(res.data.usuario.nombre)
       setToast(true)
       setTimeout(() => router.push('/panel'), 1800)
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message
         ?? 'Credenciales incorrectas. Verifique e intente nuevamente.'
-      setError(msg)
-      setToastErrorMsg(msg)
-      setToastError(true)
       setCaptchaOk(false)
-      // Delay recaptcha reset so it doesn't trigger a re-render that hides the toast
-      setTimeout(() => recaptchaRef.current?.reset(), 300)
+      recaptchaRef.current?.reset()
+      showErr(msg)
     } finally {
       setLoading(false)
     }
@@ -73,16 +90,87 @@ export default function LoginPage() {
         onClose={() => setToast(false)}
         tipo="success"
         titulo="¡Bienvenido!"
-        mensaje={`Ingreso exitoso: ${toastEmail}`}
+        mensaje={`Bienvenido: ${toastNombre}`}
       />
-      <ToastBetowa
-        show={toastError}
-        onClose={() => setToastError(false)}
-        tipo="error"
-        titulo="Acceso denegado"
-        mensaje={toastErrorMsg}
-        duration={6000}
-      />
+
+      {/* Error banner: siempre en el DOM, visible/oculto con CSS — inmune a re-renders */}
+      <div
+        role="alert"
+        aria-live="assertive"
+        onClick={hideErr}
+        style={{
+          position: 'fixed',
+          top: 18,
+          right: 18,
+          width: 'min(480px, calc(100vw - 36px))',
+          zIndex: 20000,
+          pointerEvents: errVisible ? 'auto' : 'none',
+          opacity: errVisible ? 1 : 0,
+          transform: errVisible ? 'translateY(0) scale(1)' : 'translateY(-14px) scale(0.97)',
+          transition: 'opacity 0.25s ease, transform 0.25s ease',
+          background: '#fdecec',
+          border: '1px solid rgba(176,0,32,0.18)',
+          borderRadius: 16,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+          padding: '14px 16px 10px',
+          display: 'grid',
+          gridTemplateColumns: '38px 1fr 28px',
+          gap: 10,
+          overflow: 'hidden',
+          cursor: 'pointer',
+        }}
+      >
+        {/* Ícono */}
+        <div style={{
+          width: 38, height: 38, borderRadius: 999,
+          display: 'grid', placeItems: 'center',
+          fontWeight: 900, color: '#fff', fontSize: 20,
+          background: 'linear-gradient(135deg,#b00020,#e11d48)',
+          boxShadow: '0 8px 20px rgba(0,0,0,0.18)',
+          flexShrink: 0,
+        }}>×</div>
+
+        {/* Texto */}
+        <div>
+          <div style={{ fontWeight: 800, fontSize: '1rem', color: '#7f1d1d', lineHeight: 1.1 }}>
+            Acceso denegado
+          </div>
+          {errMsg && (
+            <div style={{ marginTop: 3, fontSize: '.88rem', color: 'rgba(127,29,29,.82)', lineHeight: 1.3 }}>
+              {errMsg}
+            </div>
+          )}
+        </div>
+
+        {/* Cerrar */}
+        <button
+          type="button"
+          aria-label="Cerrar"
+          onClick={hideErr}
+          style={{
+            border: 'none', background: 'transparent',
+            fontSize: 26, lineHeight: 1, color: 'rgba(0,0,0,.40)',
+            cursor: 'pointer', padding: 0, marginTop: -2, alignSelf: 'start',
+          }}
+        >×</button>
+
+        {/* Barra de progreso animada con CSS puro — sin estado */}
+        <div style={{ gridColumn: '1 / -1', height: 5, borderRadius: 999, background: 'rgba(0,0,0,.08)', overflow: 'hidden', marginTop: 8 }}>
+          <div
+            style={{
+              height: '100%',
+              background: 'linear-gradient(135deg,#b00020,#e11d48)',
+              animation: errVisible ? 'sep-err-bar 6s linear forwards' : 'none',
+            }}
+          />
+        </div>
+      </div>
+      <style>{`
+        @keyframes sep-err-bar {
+          from { width: 100%; }
+          to   { width: 0%; }
+        }
+      `}</style>
 
       <div className="min-h-screen flex flex-col bg-neutral-50">
         {/* GOV.CO bar */}
@@ -145,13 +233,6 @@ export default function LoginPage() {
                   Acceso usuarios registrados
                 </p>
               </div>
-
-              {error && (
-                <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
-                  <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
-                  {error}
-                </div>
-              )}
 
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1.5">
@@ -238,75 +319,57 @@ export default function LoginPage() {
       </div>
 
       {/* Modal selección tipo de registro */}
-      {registroModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}
-          onClick={() => setRegistroModal(false)}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="bg-[#00304D] px-6 py-4 flex items-center justify-between">
-              <h2 className="text-white font-semibold text-base">Registrarse en el SEP</h2>
-              <button
-                type="button"
-                onClick={() => setRegistroModal(false)}
-                className="text-white/70 hover:text-white transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Opciones */}
-            <div className="p-6 flex flex-col sm:flex-row gap-4">
-              {/* Proponente */}
-              <Link
-                href="/registro/proponente"
-                onClick={() => setRegistroModal(false)}
-                className="flex-1 flex flex-col items-center gap-3 p-6 border-2 border-cerulean-500 rounded-xl hover:bg-cerulean-500 group transition-colors text-center"
-              >
-                <div className="w-14 h-14 rounded-2xl bg-cerulean-500 group-hover:bg-white flex items-center justify-center transition-colors shadow-md">
-                  <Building2 size={28} className="text-white group-hover:text-cerulean-500 transition-colors" />
-                </div>
-                <div>
-                  <p className="font-bold text-cerulean-500 group-hover:text-white text-sm transition-colors">
-                    Proponente
-                  </p>
-                  <p className="text-xs text-neutral-500 group-hover:text-white/80 mt-0.5 transition-colors">
-                    Empresa / Gremio / Asociación
-                  </p>
-                </div>
-              </Link>
-
-              {/* Usuario / Persona */}
-              <Link
-                href="/registro/usuario"
-                onClick={() => setRegistroModal(false)}
-                className="flex-1 flex flex-col items-center gap-3 p-6 border-2 border-lime-500 rounded-xl hover:bg-lime-500 group transition-colors text-center"
-              >
-                <div className="w-14 h-14 rounded-2xl bg-lime-500 group-hover:bg-white flex items-center justify-center transition-colors shadow-md">
-                  <UserPlus size={28} className="text-white group-hover:text-lime-500 transition-colors" />
-                </div>
-                <div>
-                  <p className="font-bold text-lime-600 group-hover:text-white text-sm transition-colors">
-                    Usuario
-                  </p>
-                  <p className="text-xs text-neutral-500 group-hover:text-white/80 mt-0.5 transition-colors">
-                    Persona natural
-                  </p>
-                </div>
-              </Link>
-            </div>
-
-            <p className="text-center text-[11px] text-neutral-400 pb-5">
-              Selecciona el tipo de cuenta que deseas crear
-            </p>
-          </div>
+      <Modal open={registroModal} onClose={() => setRegistroModal(false)}>
+        {/* Header */}
+        <div className="bg-[#00304D] px-6 py-4">
+          <h2 className="text-white font-semibold text-base">Registrarse en el SEP</h2>
         </div>
-      )}
+
+        {/* Opciones */}
+        <div className="p-6 flex flex-col sm:flex-row gap-4">
+          {/* Proponente */}
+          <Link
+            href="/registro/proponente"
+            onClick={() => setRegistroModal(false)}
+            className="flex-1 flex flex-col items-center gap-3 p-6 border-2 border-cerulean-500 rounded-xl hover:bg-cerulean-500 group transition-colors text-center"
+          >
+            <div className="w-14 h-14 rounded-2xl bg-cerulean-500 group-hover:bg-white flex items-center justify-center transition-colors shadow-md">
+              <Building2 size={28} className="text-white group-hover:text-cerulean-500 transition-colors" />
+            </div>
+            <div>
+              <p className="font-bold text-cerulean-500 group-hover:text-white text-sm transition-colors">
+                Proponente
+              </p>
+              <p className="text-xs text-neutral-500 group-hover:text-white/80 mt-0.5 transition-colors">
+                Empresa / Gremio / Asociación
+              </p>
+            </div>
+          </Link>
+
+          {/* Usuario / Persona */}
+          <Link
+            href="/registro/usuario"
+            onClick={() => setRegistroModal(false)}
+            className="flex-1 flex flex-col items-center gap-3 p-6 border-2 border-lime-500 rounded-xl hover:bg-lime-500 group transition-colors text-center"
+          >
+            <div className="w-14 h-14 rounded-2xl bg-lime-500 group-hover:bg-white flex items-center justify-center transition-colors shadow-md">
+              <UserPlus size={28} className="text-white group-hover:text-lime-500 transition-colors" />
+            </div>
+            <div>
+              <p className="font-bold text-lime-600 group-hover:text-white text-sm transition-colors">
+                Usuario
+              </p>
+              <p className="text-xs text-neutral-500 group-hover:text-white/80 mt-0.5 transition-colors">
+                Persona natural
+              </p>
+            </div>
+          </Link>
+        </div>
+
+        <p className="text-center text-[11px] text-neutral-400 pb-5">
+          Selecciona el tipo de cuenta que deseas crear
+        </p>
+      </Modal>
     </>
   )
 }

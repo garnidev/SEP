@@ -118,6 +118,10 @@ export class AuthService {
       throw new UnauthorizedException('Usuario incorrecto')
     }
 
+    if (usuario.usuarioEstado === 0) {
+      throw new UnauthorizedException('Usuario inactivo. Comuníquese con el administrador del sistema.')
+    }
+
     // Desencriptar clave almacenada con la llave del usuario (mismo algoritmo GeneXus)
     let claveDesencriptada: string
     try {
@@ -144,11 +148,41 @@ export class AuthService {
 
     const token = this.jwtService.sign(payload)
 
+    // Buscar nombre según perfil: perfilId=7 → EMPRESA, cualquier otro → PERSONA
+    let nombre = usuario.usuarioEmail
+    try {
+      if (usuario.perfilId === 7) {
+        const rows: Array<{ razon: string }> = await this.dataSource.query(
+          `SELECT TRIM(EMPRESARAZONSOCIAL) AS "razon"
+             FROM EMPRESA
+            WHERE EMPRESAEMAIL = :1
+              AND ROWNUM = 1`,
+          [usuario.usuarioEmail],
+        )
+        if (rows[0]?.razon) nombre = rows[0].razon
+      } else {
+        const rows: Array<{ nombres: string; apellido: string }> = await this.dataSource.query(
+          `SELECT TRIM(PERSONANOMBRES) AS "nombres",
+                  TRIM(PERSONAPRIMERAPELLIDO) AS "apellido"
+             FROM PERSONA
+            WHERE PERSONAEMAIL = :1
+              AND ROWNUM = 1`,
+          [usuario.usuarioEmail],
+        )
+        if (rows[0]?.nombres) {
+          nombre = `${rows[0].nombres} ${rows[0].apellido}`.trim()
+        }
+      }
+    } catch {
+      // Si falla la búsqueda del nombre, usamos el email como fallback
+    }
+
     return {
       accessToken: token,
       usuario: {
         usuarioId: usuario.usuarioId,
         email: usuario.usuarioEmail,
+        nombre,
         perfilId: usuario.perfilId,
         rol,
       },
