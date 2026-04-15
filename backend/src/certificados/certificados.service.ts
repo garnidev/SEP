@@ -614,7 +614,7 @@ export class CertificadosService {
       // ── Autenticidad al final de la página, izquierda ───────────────
       const left = { align: 'left' as const, width: contentW };
       // Reservar 52pt al fondo (2-3 líneas a 7-8pt con leading)
-      const autenticidadH = 30;
+      const autenticidadH = 25;
       doc.y = pageH - mBottom - autenticidadH;
       regular(9.2);
       doc.text(
